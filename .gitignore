@@ -1,0 +1,2 @@
+# Ignore in-tree extension.
+/alai/*extension.*.so
