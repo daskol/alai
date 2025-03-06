@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import pickle
 import subprocess
 import tomllib
 from argparse import Namespace
@@ -258,6 +259,17 @@ def build_graph(ns: Namespace):
     repo = Repo.from_path(repo_config['repo'])
     for ix, (_, info) in enumerate(repo.items()):
         logger.info('[%d] %s', ix, info)
+
+    cache_dir = Path('~/.cache/alai').expanduser()
+    if (val := obj.get('repo', {}).get('cache-dir')) is not None:
+        cache_dir = Path(val)
+    if ns.cache_dir is not None:
+        cache_dir = Path(ns.cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info('store build-graph into %s', cache_dir)
+    with open(cache_dir / 'repo.pkl', 'wb') as fout:
+        pickle.dump(repo, fout)
 
 
 parser = subparsers.add_parser(
