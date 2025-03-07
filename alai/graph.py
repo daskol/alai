@@ -18,8 +18,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from alai.cli.build_graph import PackageInfo, Repo
 from alai.extension import Package, find_package
+from alai.repo import PackageInfo, Repo
 
 logger = logging.getLogger(__name__)
 

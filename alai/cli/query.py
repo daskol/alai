@@ -19,13 +19,12 @@ from argparse import Namespace
 from pathlib import Path
 
 from alai.cli.main import subparsers
+from alai.graph import inverse_edges, resolve_dependencies, subgraph_of
 
 logger = logging.getLogger(__name__)
 
 
 def query(ns: Namespace):
-    # TODO(@daskol): Resolve cycle imports.
-    from alai.graph import inverse_edges, resolve_dependencies, subgraph_of
     deps = resolve_dependencies()  # Dependency graph.
     effs = inverse_edges(deps)  # Effects graph.
 
