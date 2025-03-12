@@ -12,12 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from alai.config import PacmanConfig, load_pacman_config
+from pathlib import Path
+
+from alai.config import (
+    PacmanConfig, PacmanOptionsConfig, PacmanRepoConfig, load_pacman_config)
+
+curr_dir = Path(__file__).parent
 
 
 def test_load_pacman_config():
-    config = load_pacman_config()
-    from pprint import pprint
-    pprint(config)
+    config = load_pacman_config(curr_dir / 'testdata/pacman.conf')
     assert isinstance(config, PacmanConfig)
+
+    options = config.options
+    assert isinstance(options, PacmanOptionsConfig)
+    assert options.root_dir == Path('/')
+    assert options.hold_pkg == ['pacman', 'glibc']
+    assert options.download_user == 'alpm'
+    assert options.parallel_downloads == 5
+    assert options.check_space
+    assert not options.color
+
     assert len(config.repos) == 2
+    assert {'core', 'extra'} == set(config.repos)
+    for repo in config.repos.values():
+        assert isinstance(repo, PacmanRepoConfig)
+        assert repo.server == 'https://geo.mirror.pkgbuild.com/$repo/os/$arch'
