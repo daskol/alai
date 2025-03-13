@@ -15,7 +15,7 @@ Issues = "https://github.com/archlinux-ai/alai/issues"
 [tool.pytest.ini_options]
 minversion = "8.2"
 addopts = "-ra -q -m 'not slow' --no-header"
-testpaths = ["."]
+testpaths = ["alai", "tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]

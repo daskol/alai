@@ -14,31 +14,29 @@
 
 import logging
 import pickle
-import tomllib
 from argparse import Namespace
 from pathlib import Path
 
 from alai.cli.main import subparsers
+from alai.config import Config
 from alai.repo import Repo
 
 logger = logging.getLogger(__name__)
 
 
 def build_graph(ns: Namespace):
-    spec_path: Path = ns.config
-    with open(spec_path, 'rb') as fin:
-        obj = tomllib.load(fin)
-    sources = obj.get('source', [])
-    logger.info('dependency sources are %s', sources)
+    config: Config = Config.from_file(ns.config)
+    logger.info('dependency databases are %s',
+                [x.name for x in config.database])
 
-    repo_config = obj.get('repo')
-    repo = Repo.from_path(repo_config['repo'])
+    repo = Repo.from_path(config.repo.package_dir)
     for ix, (_, info) in enumerate(repo.items()):
         logger.info('[%d] %s', ix, info)
 
     cache_dir = Path('~/.cache/alai').expanduser()
-    if (val := obj.get('repo', {}).get('cache-dir')) is not None:
-        cache_dir = Path(val)
+    # TODO(@daskol): Support cache directory.
+    # if (val := obj.get('repo', {}).get('cache-dir')) is not None:
+    #     cache_dir = Path(val)
     if ns.cache_dir is not None:
         cache_dir = Path(ns.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)

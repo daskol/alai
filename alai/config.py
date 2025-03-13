@@ -14,11 +14,14 @@
 
 import re
 import warnings
+from collections.abc import Callable
 from enum import IntEnum
+from json import JSONDecodeError, loads as load_json
 from os import PathLike
 from pathlib import Path
+from tomllib import TOMLDecodeError, loads as load_toml
 from types import UnionType
-from typing import IO, Any, Literal, cast, get_args, get_origin
+from typing import IO, Any, Self, cast, get_args, get_origin
 
 from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo
@@ -179,7 +182,7 @@ def load_pacman_config(path: PathLike = PACMAN_CONF) -> PacmanConfig:
     options = PacmanOptionsConfig(**kwargs)
 
     # Process repositories.
-    repos: dict[str, PacmanRepoConfig]= {}
+    repos: dict[str, PacmanRepoConfig] = {}
     repo_schema = get_schema(PacmanRepoConfig)
     for name, section in sections.items():
         if (include := section.pop('Include', None)) is not None:
@@ -197,5 +200,98 @@ def load_pacman_config(path: PathLike = PACMAN_CONF) -> PacmanConfig:
     return PacmanConfig(options=options, repos=repos)
 
 
+def load_config(path: str | Path) -> dict[str, Any]:
+    """Load JSON- or TOML-formatted configuration file to object.
+    """
+    # Try to load JSON-formatted config and then fallback to TOML-formatted
+    # one.
+    path = Path(path)
+    with open(path, 'r') as fin:
+        body = fin.read()
+
+    # Load (nested) dict from string.
+    loaders: tuple[Callable[[str], dict[str, Any]], ...] = ()
+    match path.suffix:
+        case '.json':
+            loaders += (load_json,)
+        case '.toml':
+            loaders += (load_toml,)
+        case _:
+            loaders += (load_json, load_toml)
+    for loader in filter(None, loaders):
+        try:
+            return loader(body)
+        except (JSONDecodeError, TOMLDecodeError):
+            pass
+    raise RuntimeError(f'Failed to load config from {path}.')
+
+
+def resolve_paths(model: BaseModel, base_dir: Path | None = None):
+    """Replaces all relative paths to absolute with respect to `base_dir` or
+    current working directory.
+
+    This routine recursively walks through `model` and resolve all path fields
+    which annotated as with `Path` type.
+
+    Args:
+      model: :py:`pydantic` data model isinstance.
+      base_dir: All paths are considered to be relative to this directory. If
+        it is not specified then `base_dir` is set to current working
+        directory.
+    """
+    if base_dir is None:
+        base_dir = Path.cwd()
+    elif not base_dir.is_absolute():
+        raise ValueError('Base directory path `base_dir` must be absolute.')
+    _resolve_paths(model, base_dir)
+
+
+def _resolve_paths(model: BaseModel, base_dir: Path):
+    for name, field in model.model_fields.items():
+        annot = field.annotation
+        if annot != Path and Path not in get_args(annot):
+            continue
+
+        if (value := getattr(model, name, None)) is None:
+            continue
+        elif isinstance(value, str | Path):
+            value = Path(value)
+            if not value.is_absolute():
+                value = base_dir / value
+            setattr(model, name, value)
+        elif isinstance(value, BaseModel):
+            resolve_paths(value, base_dir)
+
+
+class RepoConfig(BaseModel):
+
+    name: str
+
+    wal: Path
+
+    package_dir: Path
+
+
+class DatabaseConfig(BaseModel):
+
+    name: str
+
+    repo: Path | None = None
+
+    @property
+    def is_system(self) -> bool:
+        return self.repo is None
+
+
 class Config(BaseModel):
-    pass
+
+    repo: RepoConfig
+
+    database: list[DatabaseConfig]
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> Self:
+        obj = load_config(path)
+        conf = cls.model_validate(obj)
+        resolve_paths(conf)
+        return conf

@@ -1,2 +1,16 @@
+# Ignore cache and build directories.
+/.cache
+/build
+*.egg-info
+
+# Ignore all database, package, and archive files.
+*.tar.*
+*.db
+*.db.*
+*.files
+
 # Ignore in-tree extension.
 /alai/*extension.*.so
+
+# Ignore repository directory.
+/repo

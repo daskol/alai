@@ -12,6 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import bootstrap, build_graph, build_package, query  # noqa: F401
-# Re-export entrypoint to conseal implementation details.
-from .main import main as main, subparsers as subparsers
+from pathlib import Path
+
+import alai.wal
+from alai.wal import WAL
+
+
+class TestWAL:
+
+    def test_open(self, tmp_path: Path):
+        wal = WAL.open(tmp_path / 'test.wal')
+        wal.close()
+        with open(tmp_path / 'test.wal', 'rb') as fin:
+            signature = fin.read(8)
+        assert signature == WAL.MAGIC
+
+
+def test_open(tmp_path):
+    with alai.wal.open(tmp_path / 'test.wal') as wal:
+        pass
