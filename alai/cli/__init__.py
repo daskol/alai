@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import bootstrap, build_graph, build_package, query  # noqa: F401
+from . import (  # noqa: F401
+    add_package, bootstrap, build_graph, build_package, query)
 # Re-export entrypoint to conseal implementation details.
 from .main import main as main, subparsers as subparsers

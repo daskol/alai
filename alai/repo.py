@@ -122,6 +122,17 @@ class PackageInfo:
     sha384sums: list[str] = field(default_factory=list)
     sha512sums: list[str] = field(default_factory=list)
 
+    @property
+    def name(self) -> str:
+        return self.pkgname
+
+    @property
+    def version(self) -> str:
+        if self.epoch:
+            return f'{self.epoch}:{self.pkgver}-{self.pkgrel}'
+        else:
+            return f'{self.pkgver}-{self.pkgrel}'
+
     def __repr__(self) -> str:
         if self.epoch:
             epoch = f'{self.epoch}:'
