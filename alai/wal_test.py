@@ -14,8 +14,46 @@
 
 from pathlib import Path
 
+import pytest
+
 import alai.wal
-from alai.wal import WAL, Package, export_database
+from alai.wal import Version, WAL, Package, export_database
+
+
+class TestVersion:
+
+    def test_from_string(self):
+        ver = Version.from_string('0.0.0-1')
+        assert ver.components == (0, 0, 0)
+        assert ver.release == 1
+        assert ver.epoch is None
+
+    def test_from_string_epoch(self):
+        ver = Version.from_string('1:0.0.0-1')
+        assert ver.components == (0, 0, 0)
+        assert ver.release == 1
+        assert ver.epoch == 1
+
+    @pytest.mark.parametrize('lhs,rhs', [
+        ('0.0.0-1', '0.0.0-1'),
+        ('1:0.0.0-1', '1:0.0.0-1'),
+    ])
+    def test_eq(self, lhs: str, rhs: str):
+        this = Version.from_string(lhs)
+        that = Version.from_string(rhs)
+        assert this == that
+
+    @pytest.mark.parametrize('lhs,rhs', [
+        ('0.0.0-1', '1:0.0.0-1'),
+        ('1:0.0.0-1', '2:0.0.0-1'),
+        ('0.0-1', '0.0.0-1'),
+        ('0.0.1-1', '0.0.2-1'),
+        ('0.0.0-1', '0.0.0-2'),
+    ])
+    def test_lt(self, lhs: str, rhs: str):
+        this = Version.from_string(lhs)
+        that = Version.from_string(rhs)
+        assert this < that
 
 
 class TestWAL:

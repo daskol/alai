@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from . import (  # noqa: F401
-    add_package, bootstrap, build_graph, build_package, export_database, query)
+    add_package, bootstrap, build_graph, build_package, export_database, query,
+    update_package)
 # Re-export entrypoint to conseal implementation details.
 from .main import main as main, subparsers as subparsers

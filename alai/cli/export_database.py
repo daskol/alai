@@ -16,9 +16,9 @@ import logging
 from argparse import Namespace
 from pathlib import Path
 
+import alai.wal
 from alai.cli.main import subparsers
 from alai.config import Config
-import alai.wal
 
 logger = logging.getLogger(__name__)
 

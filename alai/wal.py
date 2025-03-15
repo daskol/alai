@@ -23,11 +23,88 @@ from hashlib import file_digest, sha256
 from io import BytesIO
 from os import PathLike
 from pathlib import Path
-from typing import IO, ClassVar, Literal, Self
+from typing import IO, ClassVar, Literal, Self, cast
 
 import zstandard
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class Version:
+    """Internal version representation."""
+
+    components: tuple[int | str, ...]
+    release: int
+    epoch: int | None = None
+
+    def __post_init__(self):
+        if self.release <= 0:
+            raise RuntimeError(
+                f'Release number must be positive: {self.release}.')
+
+    def __eq__(self, other):
+        if not isinstance(other, Version):
+            return NotImplemented
+        that: Version = cast(Version, other)
+        return (self.epoch == that.epoch and
+                self.components == that.components and
+                self.release == that.release)
+
+    def __lt__(self, other):
+        if not isinstance(other, Version):
+            return NotImplemented
+        that: Version = cast(Version, other)
+
+        match (self.epoch is None, that.epoch is None):
+            case (False, False):
+                if self.epoch < that.epoch:
+                    return True
+            case (True, False):
+                return True
+            case (False, True):
+                return False
+            case (True, True):
+                pass
+
+        if self.components < that.components:
+            return True
+        else:
+            return self.release < that.release
+
+    def __le__(self, other):
+        if not isinstance(other, Version):
+            return NotImplemented
+        that: Version = cast(Version, other)
+        return self < that or self == that
+
+    def __str__(self) -> str:
+        components = '.'.join(str(x) for x in self.components)
+        if self.epoch:
+            return f'{self.epoch}:{components}-{self.release}'
+        else:
+            return f'{components}-{self.release}'
+
+    @classmethod
+    def from_string(cls, version: str) -> Self:
+        epoch: int | None
+        if len(parts := version.split(':', 1)) == 1:
+            epoch = None
+        else:
+            epoch = int(parts[0])
+            version = parts[1]
+
+        version, release_str = version.split('-', 1)
+        release = int(release_str)
+
+        components = []
+        for ent in version.split('.'):
+            try:
+                components += [int(ent)]
+            except ValueError:
+                components += [ent]
+
+        return cls(tuple(components), release, epoch)
 
 
 @dataclass(slots=True)
@@ -96,6 +173,9 @@ class WAL:
                 case 'add-package':
                     package = Package(**obj.get('args'))
                     self.add_package(package)
+                case 'update-package':
+                    package = Package(**obj.get('args'))
+                    self.update_package(package)
                 case _:
                     logger.warn('unknown op %s: ignoring', RuntimeWarning)
         self.mode = 'ready'
@@ -122,6 +202,28 @@ class WAL:
 
         self.state.packages[package.name] = package
         self.append('add-package', **asdict(package))
+
+    def update_package(self, package: Package):
+        logger.info('update package %s', package.name)
+        if package.name not in self.state.packages:
+            raise KeyError(f'No package {package.name} in database.')
+
+        # Verify version of updated package.
+        prev_pkg = self.state.packages[package.name]
+        prev_ver = Version.from_string(prev_pkg.version)
+        next_ver = Version.from_string(package.version)
+        if prev_ver >= next_ver:
+            raise RuntimeError(
+                'Version of updated package must be strictly increasing: '
+                f'{prev_ver} >= {next_ver}.')
+
+        # Verify package dependencies.
+        for dep in package.depends:
+            if dep not in self.state.packages:
+                raise RuntimeError(f'Unknown package dependency: {dep}.')
+
+        self.state.packages[package.name] = package
+        self.append('update-package', **asdict(package))
 
     def get(self, package_name: str) -> Package | None:
         return self.state.packages.get(package_name)
