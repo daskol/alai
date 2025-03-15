@@ -173,6 +173,9 @@ class WAL:
                 case 'add-package':
                     package = Package(**obj.get('args'))
                     self.add_package(package)
+                case 'remove-package':
+                    [package] = obj.get('args')
+                    self.remove_package(package)
                 case 'update-package':
                     package = Package(**obj.get('args'))
                     self.update_package(package)
@@ -202,6 +205,13 @@ class WAL:
 
         self.state.packages[package.name] = package
         self.append('add-package', **asdict(package))
+
+    def remove_package(self, package_name) -> Package:
+        logger.info('remove package %s', package_name)
+        if package_name not in self.state.packages:
+            raise KeyError(f'No package {package_name} in database.')
+        self.append('remove-package', {'name': package_name})
+        return self.state.packages.pop(package_name)
 
     def update_package(self, package: Package):
         logger.info('update package %s', package.name)
