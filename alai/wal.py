@@ -14,12 +14,18 @@
 
 import json
 import logging
+import tarfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from hashlib import file_digest, sha256
+from io import BytesIO
 from os import PathLike
 from pathlib import Path
 from typing import IO, ClassVar, Literal, Self
+
+import zstandard
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +36,14 @@ class Package:
     version: str
     depends: list[str]
     external: bool = False
+    arch: str = 'any'
 
 
 @dataclass(slots=True)
 class State:
     """Represent consistent repository state."""
+
+    revision: int = 0
 
     packages: dict[str, Package] = field(default_factory=dict)
 
@@ -78,7 +87,8 @@ class WAL:
     def play(self):
         logger.info('play write-ahead log')
         self.mode = 'replaying'
-        for _, line in enumerate(self.fp):
+        rev = 0
+        for rev, line in enumerate(self.fp, 1):
             obj = json.loads(line)
             match obj.get('op'):
                 case None:
@@ -89,6 +99,7 @@ class WAL:
                 case _:
                     logger.warn('unknown op %s: ignoring', RuntimeWarning)
         self.mode = 'ready'
+        self.state.revision = rev
 
     def append(self, op: str, **kwargs):
         """Append a record to database log file."""
@@ -123,3 +134,74 @@ def open(path_like: PathLike) -> Iterator[WAL]:
         yield wal
     finally:
         wal.close()
+
+
+def export_database(wal: WAL, package_dir: Path, output_dir: Path,
+                    name: str) -> Path:
+    buf = BytesIO()
+
+    def write(key: str, val: str | int | list[str]):
+        buf.write(b'%')
+        buf.write(key.encode('utf-8'))
+        buf.write(b'%\n')
+        match val:
+            case int():
+                buf.write(str(val).encode('utf-8'))
+                buf.write(b'\n')
+            case str():
+                buf.write(val.encode('utf-8'))
+                buf.write(b'\n')
+            case list():
+                for ent in val:
+                    buf.write(ent.encode('utf-8'))
+                    buf.write(b'\n')
+        buf.write(b'\n')
+
+    output_dir.mkdir(exist_ok=True, parents=True)
+    path = output_dir / f'{name}-r{wal.state.revision}.db.tar.gz'
+
+    with tarfile.open(path, 'w:gz') as tar:
+        for pkg in (x for x in wal.state.packages.values() if not x.external):
+            basename = f'{pkg.name}-{pkg.version}'
+            filename = f'{basename}-{pkg.arch}.pkg.tar.zst'
+            pkg_path = (package_dir / filename)
+            pkg_csize = pkg_path.stat().st_size
+            pkg_isize = 0
+            with zstandard.open(pkg_path, 'rb') as fin:
+                with tarfile.open(fileobj=fin, mode='r:') as pkg_tar:
+                    for ent in pkg_tar.getmembers():
+                        if ent.name in ('.BUILDINFO', '.MTREE', '.PKGINFO'):
+                            continue
+                        pkg_isize += ent.size
+
+            with pkg_path.open('rb') as fin:
+                sha256sum = file_digest(fin, sha256).hexdigest()
+
+            buf.seek(0)
+            write('FILENAME', filename)
+            write('NAME', pkg.name)
+            write('BASE', pkg.name)  # TODO
+            write('VERSION', pkg.version)
+            write('DESC', 'TODO')
+            write('CSIZE', pkg_csize)
+            write('ISIZE', pkg_isize)
+            write('SHA256SUM', sha256sum)
+            write('URL', 'https://example.org')
+            write('LICENSE', 'TODO')
+            write('ARCH', pkg.arch)
+            write('BUILDDATE', int(datetime.now().timestamp()))
+            write('PACKAGER', 'Daniel Bershatsky <d.bershatsky2@skoltech.ru>')
+            write('DEPENDS', pkg.depends)
+            write('MAKEDEPENDS', [])
+            size = buf.tell()
+            buf.seek(0)
+
+            tar_info = tarfile.TarInfo(basename)
+            tar_info.type = tarfile.DIRTYPE
+            tar.addfile(tar_info)
+
+            tar_info = tarfile.TarInfo(f'{basename}/desc')
+            tar_info.size = size
+            tar.addfile(tar_info, buf)
+
+    return path
