@@ -271,6 +271,10 @@ class RepoConfig(BaseModel):
 
     package_dir: Path
 
+    source_dir: Path
+
+    target_dir: Path
+
 
 class DatabaseConfig(BaseModel):
 

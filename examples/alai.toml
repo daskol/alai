@@ -2,8 +2,10 @@
 
 [repo]
 name = "alai"
-package_dir = "repo/alai"
 wal = "repo/alai.wal"
+package_dir = "repo/alai"
+source_dir = "repo/cache/src"
+target_dir = "repo/cache/pkg"
 
 [[database]]
 name = "core"
