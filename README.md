@@ -24,7 +24,7 @@ lines to `pacman.conf`.
 # /etc/pacman.conf
 [ai]
 SigLevel = Optional TrustAll
-Server = https://arch.daskol.tech/$repo/os/$arch
+Server = http://arch.daskol.tech/$repo/os/$arch
 ```
 
 Then refresh package databases with `pacman -Sy`. Now, you can use it: see list
