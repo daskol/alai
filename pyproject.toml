@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 authors = [
     { name = "Daniel Betshatsky", email = "daniel.bershatsky@gmail.com" },
 ]
-dependencies = ["zstandard>=0.23.0"]
+dependencies = ["pydantic>=2", "zstandard>=0.23.0"]
 
 [project.urls]
 Homepage = "https://github.com/archlinux-ai/alai"

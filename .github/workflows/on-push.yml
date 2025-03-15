@@ -67,7 +67,7 @@ jobs:
       # `pyproject.toml`.
       - name: Install Python dependencies
         run: |
-          python -m pip install 'zstandard'
+          python -m pip install pydantic zstandard
           # Testing dependencies.
           python -m pip install mypy 'pytest>=8.2' pytest-cov
       - name: Run all tests with PyTest
