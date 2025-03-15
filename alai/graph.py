@@ -17,9 +17,19 @@ import pickle
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, TypeAlias
 
-from alai.extension import Package, find_package
 from alai.repo import PackageInfo, Repo
+
+try:
+    from alai.extension import Package, find_package
+except ImportError:
+    HAS_EXTENSION = False
+else:
+    HAS_EXTENSION = True
+
+if not HAS_EXTENSION:
+    Package: TypeAlias = Any  # TODO(@daskol): Proper typing and import guard.
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +88,7 @@ def resolve_dependencies(repo: Repo | None = None):
             nodes[pkg_name] = pkg_info
 
         # TODO(@daskol): Skip if package is owned by `core` or `extra`.
-        if isinstance(pkg_info, Package):
+        if not isinstance(pkg_info, PackageInfo):
             continue
 
         links[pkg_name] = []

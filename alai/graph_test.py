@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+
 from alai.graph import inverse_edges, resolve_dependencies
 
 
+@pytest.mark.xfail(reason='no extension')
 def test_resolve_dependencies():
     print()
     graph = resolve_dependencies()

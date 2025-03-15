@@ -1,5 +1,3 @@
-
-
 class Package:
     @property
     def name(self) -> str: ...

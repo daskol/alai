@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 import alai.wal
-from alai.wal import Version, WAL, Package, export_database
+from alai.wal import WAL, Package, Version, export_database
 
 
 class TestVersion:
@@ -67,7 +67,7 @@ class TestWAL:
 
 
 def test_open(tmp_path: Path):
-    with alai.wal.open(tmp_path / 'test.wal') as _wal:
+    with alai.wal.open(tmp_path / 'test.wal'):
         pass
 
 
@@ -78,8 +78,9 @@ def test_export_database(tmp_path: Path):
     # Write dummy package to temp directory for testing.
     pkg_path = tmp_path / 'python-test-0.0.0-1-any.pkg.tar.zst'
     import tarfile
-    import zstandard
     from io import BytesIO
+
+    import zstandard
     with zstandard.open(pkg_path, 'wb') as fout:
         with tarfile.open(fileobj=fout, mode='w:') as tar:
             buf = BytesIO()

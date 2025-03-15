@@ -19,9 +19,6 @@ from pathlib import Path
 import alai.wal
 from alai.cli.main import subparsers
 from alai.config import Config
-from alai.extension import find_package
-from alai.repo import Repo
-from alai.wal import Package
 
 logger = logging.getLogger(__name__)
 
