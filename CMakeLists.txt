@@ -16,6 +16,16 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory(external)  # Define all external dependencies.
+find_package(Python 3.12 REQUIRED COMPONENTS  Interpreter Development.Module)
+
+include(FetchContent)
+
+# For some reason, nanobind fails to attach Python include directories.
+include_directories(SYSTEM "${Python_INCLUDE_DIRS}")
+include_directories("${FETCHCONTENT_BASE_DIR}/robin-map-src/include")
+include_directories("${FETCHCONTENT_BASE_DIR}/nanobind-src/include")
+
+# NOTE Order is important.
+add_subdirectory(external)  # Third-party dependencies.
 
 add_subdirectory(alai)

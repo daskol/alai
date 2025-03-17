@@ -1,0 +1,6 @@
+/.*
+/Dockerfile
+/build
+/dist
+
+/alai/*.so

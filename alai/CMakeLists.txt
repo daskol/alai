@@ -1,7 +1,5 @@
 add_subdirectory(cc)
 
-find_package(Python 3.12 COMPONENTS Interpreter Development.Module REQUIRED)
-
 nanobind_add_module(extension NOMINSIZE extension.cc)
 
 target_include_directories(extension PRIVATE ${PROJECT_SOURCE_DIR})
